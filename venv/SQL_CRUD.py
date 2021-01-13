@@ -43,7 +43,7 @@ class Certificate_management_system(object):
             pass
 
     def Create_TABLE(self,table_name):
-        create_table_sql = 'CREATE TABLE IF NOT EXISTS '+table_name+'(ID INT PRIMARY KEY auto_increment,USERNAME VARCHAR (25),PASSWORD VARCHAR(25) NOT NULL,DATA VARCHAR (255))'
+        create_table_sql = 'CREATE TABLE IF NOT EXISTS '+table_name+'(ID INT PRIMARY KEY auto_increment,USERNAME VARCHAR (25) NOT NULL UNIQUE,PASSWORD VARCHAR(25) NOT NULL,DATA VARCHAR (255))'
         try:
             self.cursor.execute(create_table_sql)
             results = self.cursor.fetchone()
@@ -89,14 +89,14 @@ class Certificate_management_system(object):
             return {'code': '999', 'message': '插入数据 username='+user_name+'失败!', 'data': []}
     def Query_DATA(self,user_name):
         query_sql = "SELECT * FROM ccertificate_management_system WHERE USERNAME= '"+user_name+"'"
-        try:
-            self.cursor.execute(query_sql)
-            results = self.cursor.fetchone()
-            result = {'code': '200', 'message': '查询' + user_name + '成功!', 'data': results}
-            self.conn.commit()
-            return result
-        except:
-            return {'code': '999', 'message': '查询' + user_name + '失败！', 'data': []}
+        self.cursor.execute(query_sql)
+        results = self.cursor.fetchone()
+        self.conn.commit()
+        if not results:
+            result = {'code': '999', 'message': '查询' + user_name + '失败!', 'data': []}
+        else:
+            result = {'code': '200', 'message': '查询' + user_name + '成功！', 'data': results}
+        return result
     def Update_DATA(self):
         pass
 

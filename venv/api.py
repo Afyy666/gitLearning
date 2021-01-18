@@ -4,12 +4,31 @@
 # @File : api.py
 # @Software : PyCharm
 
-from flask import Flask,jsonify,request
+from flask import Flask,jsonify,request,redirect,url_for,session,g
 from SQL_CRUD import Certificate_management_system
 import json
+from dataclasses import dataclass
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
+app.config['SECRET_KEY']='sndokasmdklamslk'
+
+@dataclass
+class User:
+    id:int
+    password:str
+    username: str
+
+@app.before_request
+def before_request():
+    g.User = None
+    if 'user_id' in session:
+        system = Certificate_management_system()
+        data = system.Use(db_name='certificate_management_system')
+        data1 = system.Query_DATA_id(str(session['user_id']))
+        user = User(data1['data']['ID'],data1['data']['USERNAME'],data1['data']['PASSWORD'])
+        g.User = user
+
 
 @app.route('/')
 def CREATE_DB_TB():
@@ -30,7 +49,7 @@ def CREATE_DB_TB():
 @app.route('/user/register',methods=['GET','POST'])
 def register():
     if request.method == 'GET':
-        return "None"
+        return "<h1>此处为注册界面！<h1>"
     if request.method == 'POST':
         msg = {
             'code':'',
@@ -62,6 +81,59 @@ def register():
 
 
 
+@app.route('/user/login',methods = ['GET','POST'])
+def login():
+    if request.method =='GET':
+        return "<h1>此处为登录界面！<h1>"
+    if request.method == 'POST':
+        msg = {
+            'code': '',
+            'data': '',
+            'message': ''
+        }
+        session.pop("user_id",None)
+        param = json.loads(request.data.decode('utf-8'))
+        username = param.get("username", "")
+        password = param.get("password", "")
+        if not username :
+            msg['code']='999'
+            msg['data']='Null'
+            msg['message']='账号不能为空！'
+            return jsonify(msg)
+        elif not password:
+            msg['code'] = '999'
+            msg['data'] = 'Null'
+            msg['message'] = '密码不能为空！'
+            return jsonify(msg)
+        system = Certificate_management_system()
+        data = system.Use(db_name='certificate_management_system')
+        data1 = system.Query_DATA(user_name=username)
+        if data1['data']['USERNAME'] == username and data1['data']['PASSWORD'] == password:
+            user = User(data1['data']['ID'],password,username)
+            session['user_id'] = user.id
+            msg['code'] = '200'
+            msg['data'] = username
+            msg['message'] = username+'登录成功！'
+        else:
+            msg['code'] = '999'
+            msg['data'] = 'NULL'
+            msg['message'] = username + '登录失败！'
+        return jsonify(msg)
+
+@app.route("/user/profile",methods = ['GET'])
+def profile():
+    if not g.User:
+        return redirect(url_for('login'))
+    else :
+        return "test successfully！"
+
+@app.route('/user/login-out',methods = ['GET'])
+def loginout():
+    if "user_id" in session:
+        msg = {'code': '200', 'message': str(session['user_id'])+'登出成功', 'data':[]}
+        session.pop('user_id', None)
+        return jsonify(msg)
+
 @app.route('/user/<name>',methods = ['GET'])
 def Get_user(name):
     system = Certificate_management_system()
@@ -72,19 +144,17 @@ def Get_user(name):
 
 @app.route('/user/<name>',methods = ['POST'])
 def Create_user(name,password,data):
-    pass
+    return None
 
 @app.route('/user/<name>',methods = ['PUT'])
 def Update_user(name,password,data):
-    pass
+    return None
 
 @app.route('/user/<name>',methods = ['DELETE'])
 def Delete_user(name):
-    pass
+    return None
 
-@app.route('/user/login',methods = ['GET','POST'])
-def login():
-    pass
+
 
 
 

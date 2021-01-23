@@ -5,6 +5,7 @@
 # @Software : PyCharm
 
 from flask import Flask,jsonify,request,redirect,url_for,session,g
+from flask_jwt import JWT, jwt_required, current_identity
 from SQL_CRUD import Certificate_management_system
 import json
 from dataclasses import dataclass
@@ -12,23 +13,50 @@ from dataclasses import dataclass
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 app.config['SECRET_KEY']='sndokasmdklamslk'
+app.config['JWT_AUTH_URL_RULE'] = '/user/login'
+
+
 
 @dataclass
 class User:
     id:int
+    username:str
     password:str
-    username: str
 
-@app.before_request
-def before_request():
-    g.User = None
-    if 'user_id' in session:
+# @app.before_request
+# def before_request():
+#     g.User = None
+#     if 'user_id' in session:
+#         system = Certificate_management_system()
+#         data = system.Use(db_name='certificate_management_system')
+#         data1 = system.Query_DATA_id(str(session['user_id']))
+#         user = User(data1['data']['ID'],data1['data']['USERNAME'],data1['data']['PASSWORD'])
+#         g.User = user
+
+
+
+def authenticate(username, password):
+    system = Certificate_management_system()
+    data = system.Use(db_name='certificate_management_system')
+    data1 = system.Query_DATA(user_name=username)
+    if data1['data']['USERNAME'] == username and data1['data']['PASSWORD'] == password:
+        user = User(data1['data']['ID'], username, password)
+        return user
+
+
+
+def identity(payload):
+        user_id = str(payload['identity'])
         system = Certificate_management_system()
         data = system.Use(db_name='certificate_management_system')
-        data1 = system.Query_DATA_id(str(session['user_id']))
+        data1 = system.Query_DATA_id(id=user_id)
         user = User(data1['data']['ID'],data1['data']['USERNAME'],data1['data']['PASSWORD'])
-        g.User = user
+        return user
 
+
+
+
+jwt = JWT(app, authenticate, identity)
 
 @app.route('/')
 def CREATE_DB_TB():
@@ -80,59 +108,64 @@ def register():
             return jsonify({'code': '999', 'message': '已有用户名'+username+',请重新输入新的用户名!', 'data':[]})
 
 
+# @app.route('/login',methods = ['GET','POST'])
+# def login():
+#     if request.method =='GET':
+#         return "<h1>此处为登录界面！<h1>"
+#     if request.method == 'POST':
+#         msg = {
+#             'code': '',
+#             'data': '',
+#             'message': ''
+#         }
+#         session.pop("user_id",None)
+#         param = json.loads(request.data.decode('utf-8'))
+#         username = param.get("username", "")
+#         password = param.get("password", "")
+#         if not username :
+#             msg['code']='999'
+#             msg['data']='Null'
+#             msg['message']='账号不能为空！'
+#             return jsonify(msg)
+#         elif not password:
+#             msg['code'] = '999'
+#             msg['data'] = 'Null'
+#             msg['message'] = '密码不能为空！'
+#             return jsonify(msg)
+#         system = Certificate_management_system()
+#         data = system.Use(db_name='certificate_management_system')
+#         data1 = system.Query_DATA(user_name=username)
+#         if data1['data']['USERNAME'] == username and data1['data']['PASSWORD'] == password:
+#             user = User(data1['data']['ID'],password,username)
+#             session['user_id'] = user.id
+#             msg['code'] = '200'
+#             msg['data'] = username
+#             msg['message'] = username+'登录成功！'
+#         else:
+#             msg['code'] = '999'
+#             msg['data'] = 'NULL'
+#             msg['message'] = username + '登录失败！'
+#         return jsonify(msg)
 
-@app.route('/user/login',methods = ['GET','POST'])
-def login():
-    if request.method =='GET':
-        return "<h1>此处为登录界面！<h1>"
-    if request.method == 'POST':
-        msg = {
-            'code': '',
-            'data': '',
-            'message': ''
-        }
-        session.pop("user_id",None)
-        param = json.loads(request.data.decode('utf-8'))
-        username = param.get("username", "")
-        password = param.get("password", "")
-        if not username :
-            msg['code']='999'
-            msg['data']='Null'
-            msg['message']='账号不能为空！'
-            return jsonify(msg)
-        elif not password:
-            msg['code'] = '999'
-            msg['data'] = 'Null'
-            msg['message'] = '密码不能为空！'
-            return jsonify(msg)
-        system = Certificate_management_system()
-        data = system.Use(db_name='certificate_management_system')
-        data1 = system.Query_DATA(user_name=username)
-        if data1['data']['USERNAME'] == username and data1['data']['PASSWORD'] == password:
-            user = User(data1['data']['ID'],password,username)
-            session['user_id'] = user.id
-            msg['code'] = '200'
-            msg['data'] = username
-            msg['message'] = username+'登录成功！'
-        else:
-            msg['code'] = '999'
-            msg['data'] = 'NULL'
-            msg['message'] = username + '登录失败！'
-        return jsonify(msg)
 
-@app.route("/user/profile",methods = ['GET'])
-def profile():
-    if not g.User:
-        return redirect(url_for('login'))
-    else :
-        return "test successfully！"
+@app.route("/test",methods = ['GET'])
+@jwt_required()
+def test():
+    return '%s' %current_identity
 
-@app.route('/user/login-out',methods = ['GET'])
-def loginout():
-    if "user_id" in session:
-        msg = {'code': '200', 'message': str(session['user_id'])+'登出成功', 'data':[]}
-        session.pop('user_id', None)
-        return jsonify(msg)
+# @app.route("/user/profile",methods = ['GET'])
+# def profile():
+#     if not g.User:
+#         return redirect(url_for('login'))
+#     else :
+#         return "test successfully！"
+
+# @app.route('/user/login-out',methods = ['GET'])
+# def loginout():
+#     if "user_id" in session:
+#         msg = {'code': '200', 'message': str(session['user_id'])+'登出成功', 'data':[]}
+#         session.pop('user_id', None)
+#         return jsonify(msg)
 
 @app.route('/user/<name>',methods = ['GET'])
 def Get_user(name):

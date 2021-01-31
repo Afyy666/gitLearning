@@ -93,9 +93,19 @@ class Certificate_management_system(object):
         results = self.cursor.fetchone()
         self.conn.commit()
         if not results:
-            result = {'code': '999', 'message': '查询' + user_name + '失败!', 'data': []}
+            result = {'code': '999', 'message': '查询username:' + user_name + '失败!', 'data': []}
         else:
-            result = {'code': '200', 'message': '查询' + user_name + '成功！', 'data': results}
+            result = {'code': '200', 'message': '查询usrename:' + user_name + '成功！', 'data': results}
+        return result
+    def Query_DATA_pw(self,password):
+        query_sql = "SELECT * FROM ccertificate_management_system WHERE PASSWORD= '" + password + "'"
+        self.cursor.execute(query_sql)
+        results = self.cursor.fetchone()
+        self.conn.commit()
+        if not results:
+            result = {'code': '999', 'message': '查询password:' + password + '失败!', 'data': []}
+        else:
+            result = {'code': '200', 'message': '查询password:' + password + '成功！', 'data': results}
         return result
     def Query_DATA_id(self,id):
         query_sql = "SELECT * FROM ccertificate_management_system WHERE ID= '" + id+"'"
@@ -103,9 +113,9 @@ class Certificate_management_system(object):
         results = self.cursor.fetchone()
         self.conn.commit()
         if not results:
-            result = {'code': '999', 'message': '查询' + id + '失败!', 'data': []}
+            result = {'code': '999', 'message': '查询id:' + id + '失败!', 'data': []}
         else:
-            result = {'code': '200', 'message': '查询' + id + '成功！', 'data': results}
+            result = {'code': '200', 'message': '查询id:' + id + '成功！', 'data': results}
         return result
     def Update_DATA(self):
         pass

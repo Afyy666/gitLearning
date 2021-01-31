@@ -4,59 +4,30 @@
 # @File : api.py
 # @Software : PyCharm
 
-from flask import Flask,jsonify,request,redirect,url_for,session,g
-from flask_jwt import JWT, jwt_required, current_identity
+from flask import Flask,jsonify,request,redirect
 from SQL_CRUD import Certificate_management_system
 import json
-from dataclasses import dataclass
+
+
+from flask_jwt_extended import (
+    JWTManager, jwt_required, create_access_token,
+    jwt_refresh_token_required, create_refresh_token,
+    get_jwt_identity
+)
+
 
 app = Flask(__name__)
-app.config['JSON_AS_ASCII'] = False
-app.config['SECRET_KEY']='sndokasmdklamslk'
-app.config['JWT_AUTH_URL_RULE'] = '/user/login'
-
-
-
-@dataclass
-class User:
-    id:int
-    username:str
-    password:str
-
-# @app.before_request
-# def before_request():
-#     g.User = None
-#     if 'user_id' in session:
-#         system = Certificate_management_system()
-#         data = system.Use(db_name='certificate_management_system')
-#         data1 = system.Query_DATA_id(str(session['user_id']))
-#         user = User(data1['data']['ID'],data1['data']['USERNAME'],data1['data']['PASSWORD'])
-#         g.User = user
-
-
-
-def authenticate(username, password):
-    system = Certificate_management_system()
-    data = system.Use(db_name='certificate_management_system')
-    data1 = system.Query_DATA(user_name=username)
-    if data1['data']['USERNAME'] == username and data1['data']['PASSWORD'] == password:
-        user = User(data1['data']['ID'], username, password)
-        return user
-
-
-
-def identity(payload):
-        user_id = str(payload['identity'])
-        system = Certificate_management_system()
-        data = system.Use(db_name='certificate_management_system')
-        data1 = system.Query_DATA_id(id=user_id)
-        user = User(data1['data']['ID'],data1['data']['USERNAME'],data1['data']['PASSWORD'])
-        return user
+app.config['JWT_SECRET_KEY'] = 'odmbryqoshrmffogowegxh'
+jwt = JWTManager(app)
 
 
 
 
-jwt = JWT(app, authenticate, identity)
+
+
+
+
+
 
 @app.route('/')
 def CREATE_DB_TB():
@@ -108,64 +79,66 @@ def register():
             return jsonify({'code': '999', 'message': '已有用户名'+username+',请重新输入新的用户名!', 'data':[]})
 
 
-# @app.route('/login',methods = ['GET','POST'])
-# def login():
-#     if request.method =='GET':
-#         return "<h1>此处为登录界面！<h1>"
-#     if request.method == 'POST':
-#         msg = {
-#             'code': '',
-#             'data': '',
-#             'message': ''
-#         }
-#         session.pop("user_id",None)
-#         param = json.loads(request.data.decode('utf-8'))
-#         username = param.get("username", "")
-#         password = param.get("password", "")
-#         if not username :
-#             msg['code']='999'
-#             msg['data']='Null'
-#             msg['message']='账号不能为空！'
-#             return jsonify(msg)
-#         elif not password:
-#             msg['code'] = '999'
-#             msg['data'] = 'Null'
-#             msg['message'] = '密码不能为空！'
-#             return jsonify(msg)
-#         system = Certificate_management_system()
-#         data = system.Use(db_name='certificate_management_system')
-#         data1 = system.Query_DATA(user_name=username)
-#         if data1['data']['USERNAME'] == username and data1['data']['PASSWORD'] == password:
-#             user = User(data1['data']['ID'],password,username)
-#             session['user_id'] = user.id
-#             msg['code'] = '200'
-#             msg['data'] = username
-#             msg['message'] = username+'登录成功！'
-#         else:
-#             msg['code'] = '999'
-#             msg['data'] = 'NULL'
-#             msg['message'] = username + '登录失败！'
-#         return jsonify(msg)
+@app.route('/user/login', methods=['POST','GET'])
+def login():
+    if request.method == 'GET':
+        return "<h1>此处为注册界面！<h1>"
+    if request.method == 'POST':
+        msg = {
+            'code': '',
+            'data': '',
+            'message': ''
+        }
+        param = json.loads(request.data.decode('utf-8'))
+        username = param.get('username', "")
+        password = param.get('password', "")
+        if not username:
+            msg['code'] = '999'
+            msg['data'] = 'Null'
+            msg['message'] = '账号不能为空！'
+            return jsonify(msg)
+        elif not password:
+            msg['code'] = '999'
+            msg['data'] = 'Null'
+            msg['message'] = '密码不能为空！'
+            return jsonify(msg)
+        system = Certificate_management_system()
+        data = system.Use(db_name='certificate_management_system')
+        data1 = system.Query_DATA(user_name=username)
+        data2 = system.Query_DATA_pw(password=password)
+        # print(data1)
+        if data1['code'] == '999' or data2['code'] == '999':
+            msg['code'] = '999'
+            msg['data'] = 'Null'
+            msg['message'] = '请仔细检查账号密码！'
+        else:
+            ret = {
+                'access_token': create_access_token(identity=username),
+                'refresh_token': create_refresh_token(identity=username)
+            }
+            msg['code'] = '200'
+            msg['data'] = ret
+            msg['message'] = '用户'+username+'登录成功！'
+        return jsonify(msg)
 
 
-@app.route("/test",methods = ['GET'])
-@jwt_required()
+@app.route("/user/test",methods = ['GET'])
+@jwt_required
 def test():
-    return '%s' %current_identity
+    username = get_jwt_identity()
+    if username:
+        return jsonify({'code': '200', 'message': '现在用户'+username+'正在登录', 'data':[]})
+    else:
+        return jsonify({'code': '200', 'message': '暂无用户处于登录状态.', 'data': []})
 
-# @app.route("/user/profile",methods = ['GET'])
-# def profile():
-#     if not g.User:
-#         return redirect(url_for('login'))
-#     else :
-#         return "test successfully！"
-
-# @app.route('/user/login-out',methods = ['GET'])
-# def loginout():
-#     if "user_id" in session:
-#         msg = {'code': '200', 'message': str(session['user_id'])+'登出成功', 'data':[]}
-#         session.pop('user_id', None)
-#         return jsonify(msg)
+@app.route('/user/refresh', methods=['GET'])
+@jwt_refresh_token_required
+def refresh():
+    current_user = get_jwt_identity()
+    ret = {
+        'access_token': create_access_token(identity=current_user)
+    }
+    return jsonify({'code': '200', 'message': '重新获取token!', 'data': ret})
 
 @app.route('/user/<name>',methods = ['GET'])
 def Get_user(name):
@@ -174,6 +147,13 @@ def Get_user(name):
     data1 = system.Query_DATA(user_name=name)
     return jsonify(data1)
 
+@jwt.invalid_token_loader
+def invalid_token_callback(identity):
+    return jsonify({'code': '999', 'message': identity, 'data': []})
+
+@jwt.expired_token_loader
+def expired_token_callback(identity):
+    return jsonify({'code': '999', 'message': identity, 'data': []})
 
 @app.route('/user/<name>',methods = ['POST'])
 def Create_user(name,password,data):
@@ -186,10 +166,6 @@ def Update_user(name,password,data):
 @app.route('/user/<name>',methods = ['DELETE'])
 def Delete_user(name):
     return None
-
-
-
-
 
 
 
